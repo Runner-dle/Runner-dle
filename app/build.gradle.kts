@@ -1,3 +1,6 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+import org.jetbrains.kotlin.konan.properties.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -18,6 +21,17 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // local.properties에서 NAVER_CLIENT_ID 읽기
+        val localProperties = Properties()
+        val file = rootProject.file("local.properties")
+        if (file.exists()) {
+            localProperties.load(file.inputStream())
+        }
+        val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID")
+
+        // Manifest에 NAVER_CLIENT_ID 전달
+        manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
     }
 
     buildTypes {
@@ -59,6 +73,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.fragment)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -66,4 +84,6 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    implementation("com.naver.maps:map-sdk:3.19.1")
 }
