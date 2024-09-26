@@ -1,5 +1,5 @@
 import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
-import org.jetbrains.kotlin.konan.properties.Properties
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -22,20 +22,24 @@ android {
             useSupportLibrary = true
         }
 
-        // local.properties에서 NAVER_CLIENT_ID 읽기
+        // local.properties에서 NAVER_CLIENT_ID 및 NAVER_CLIENT_SECRET 읽기
         val localProperties = Properties()
         val file = rootProject.file("local.properties")
         if (file.exists()) {
             localProperties.load(file.inputStream())
         }
         val naverClientId = localProperties.getProperty("NAVER_CLIENT_ID")
+        val naverClientSecret = localProperties.getProperty("NAVER_CLIENT_SECRET")
 
-        // Manifest에 NAVER_CLIENT_ID 전달
+        // AndroidManifest.xml에 전달
         manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
+        manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
+
+
     }
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -43,19 +47,24 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
     buildFeatures {
         compose = true
     }
+
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.1"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

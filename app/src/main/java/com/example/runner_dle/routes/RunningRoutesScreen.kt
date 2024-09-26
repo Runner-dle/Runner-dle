@@ -29,6 +29,7 @@ import com.naver.maps.map.util.FusedLocationSource
 import com.yourapp.repository.GeocodingRepository
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
+import java.util.Properties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,19 +43,30 @@ fun RunningRoutesScreen(navController: NavController) {
     var distanceKm by remember { mutableStateOf("") }
     var hasLocationPermission by remember { mutableStateOf(false) }
     var roadAddress by remember { mutableStateOf("") }
-
     val coroutineScope = rememberCoroutineScope()
     val geocodingRepository = GeocodingRepository()
 
-    // Manifest에서 NAVER_CLIENT_ID 불러오기
+    // Snackbar 상태 저장
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // AndroidManifest에서 NAVER_CLIENT_ID와 NAVER_CLIENT_SECRET을 불러오는 코드
     val naverClientId = context.packageManager
         .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
         .metaData.getString("NAVER_CLIENT_ID")
 
-    // local.properties에서 NAVER_CLIENT_SECRET 가져오기
     val naverClientSecret = context.packageManager
         .getApplicationInfo(context.packageName, PackageManager.GET_META_DATA)
         .metaData.getString("NAVER_CLIENT_SECRET")
+
+    // 추가: API 키 값을 로그로 확인
+    Log.d("API_KEYS", "Client ID: $naverClientId, Secret: $naverClientSecret")
+
+    // API 키가 제대로 설정되었는지 확인
+    if (naverClientId.isNullOrEmpty() || naverClientSecret.isNullOrEmpty()) {
+        Log.e("API_KEYS_ERROR", "API Key or Secret is missing. Please check your configuration.")
+    } else {
+        Log.d("API_KEYS_SUCCESS", "API Keys are properly set.")
+    }
 
     // 권한 요청 런처
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -78,6 +90,9 @@ fun RunningRoutesScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(title = { Text("Running Routes") })
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState) // Snackbar 표시할 위치 설정
         }
     ) { paddingValues ->
         Column(
@@ -142,10 +157,14 @@ fun RunningRoutesScreen(navController: NavController) {
                 onClick = {
                     coroutineScope.launch {
                         try {
-                            // URL 인코딩된 주소로 Geocoding API 호출
+                            Log.d("INPUT_VALUES", "Start Point: $startPoint, End Point: $endPoint")
+
                             val encodedStartPoint = URLEncoder.encode(startPoint, "UTF-8")
                             val encodedEndPoint = URLEncoder.encode(endPoint, "UTF-8")
 
+                            Log.d("ENCODED_VALUES", "Encoded Start Point: $encodedStartPoint, Encoded End Point: $encodedEndPoint")
+
+                            // Geocoding API 호출
                             val startPointResponse = naverClientId?.let {
                                 geocodingRepository.getGeocodedLocation(encodedStartPoint, it, naverClientSecret!!)
                             }
@@ -153,14 +172,16 @@ fun RunningRoutesScreen(navController: NavController) {
                                 geocodingRepository.getGeocodedLocation(encodedEndPoint, it, naverClientSecret!!)
                             }
 
-                            val startAddress = startPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "주소를 찾을 수 없습니다"
-                            val endAddress = endPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "주소를 찾을 수 없습니다"
+                            val startAddress = startPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "Start address not found"
+                            val endAddress = endPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "End address not found"
 
                             roadAddress = "Start: $startAddress, End: $endAddress"
-                            Log.d("API_RESPONSE", "Start Address: $startAddress, End Address: $endAddress")
+
+                            // Snackbar로 결과 표시
+                            snackbarHostState.showSnackbar("Start: $startAddress, End: $endAddress")
 
                         } catch (e: Exception) {
-                            Log.e("API_ERROR", "Error during Geocoding API call: ${e.message}")
+                            Log.e("API_ERROR", "Error during Geocoding API call: ${e.message}", e)
                         }
                     }
                 },
@@ -171,14 +192,12 @@ fun RunningRoutesScreen(navController: NavController) {
                 Text("Show Recommended Route")
             }
 
-            // 검색된 주소를 표시
             if (roadAddress.isNotEmpty()) {
                 Text(text = "Found Address: $roadAddress", style = MaterialTheme.typography.bodyLarge)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 메인 화면으로 돌아가기 버튼
             TextButton(onClick = {
                 navController.navigate("main")
             }) {
@@ -187,6 +206,9 @@ fun RunningRoutesScreen(navController: NavController) {
         }
     }
 }
+
+
+
 
 @Composable
 fun NaverMapContainer(locationSource: FusedLocationSource, modifier: Modifier = Modifier) {
