@@ -86,4 +86,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     implementation("com.naver.maps:map-sdk:3.19.1")
+    implementation (libs.retrofit)
+    implementation ("com.squareup.retrofit2:converter-gson:2.11.0")
+
 }

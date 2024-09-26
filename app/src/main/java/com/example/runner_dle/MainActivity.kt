@@ -21,8 +21,11 @@ import androidx.navigation.compose.rememberNavController
 import com.example.runner_dle.ui.theme.RunnerdleTheme
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.util.FusedLocationSource
 import com.yourapp.ui.main.MainScreen
+import com.yourapp.ui.routes.RouteDisplayScreen
+import com.yourapp.ui.routes.RouteSelectionScreen
 import com.yourapp.ui.routes.RunningRoutesScreen
 
 class MainActivity : ComponentActivity() {
@@ -75,14 +78,29 @@ fun AppNavigator(
     modifier: Modifier = Modifier,
     hasLocationPermission: Boolean
 ) {
+    var startPoint by remember { mutableStateOf<LatLng?>(null) }
+    var endPoint by remember { mutableStateOf<LatLng?>(null) }
+
     NavHost(navController = navController, startDestination = "main") {
         composable("main") { MainScreen(navController = navController) }
         composable("runningRoutes") {
             if (hasLocationPermission) {
                 RunningRoutesScreen(navController = navController)
             } else {
-                // 권한이 없을 때 처리 (예: 권한 필요 메시지 표시)
-                Text("Location permission is required to use this feature.")
+                Text("이 기능을 사용하려면 위치 권한이 필요합니다.")
+            }
+        }
+        composable("routeSelection") {
+            RouteSelectionScreen(navController = navController) { start, end ->
+                startPoint = start
+                endPoint = end
+            }
+        }
+        composable("routeDisplay") {
+            if (startPoint != null && endPoint != null) {
+                RouteDisplayScreen(startPoint!!, endPoint!!)
+            } else {
+                Text("Please select a route first.")
             }
         }
     }
