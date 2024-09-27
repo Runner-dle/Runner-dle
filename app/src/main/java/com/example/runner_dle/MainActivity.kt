@@ -5,28 +5,33 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.app.ActivityCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.runner_dle.marker.LocationMarkerScreenWithGeo
+import com.example.runner_dle.routes.RouteDisplayScreen
+import com.example.runner_dle.routes.RunningRoutesScreen
 import com.example.runner_dle.ui.theme.RunnerdleTheme
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.util.FusedLocationSource
 import com.yourapp.ui.main.MainScreen
-import com.yourapp.ui.routes.RouteDisplayScreen
 import com.yourapp.ui.routes.RouteSelectionScreen
-import com.yourapp.ui.routes.RunningRoutesScreen
 
 class MainActivity : ComponentActivity() {
     private lateinit var locationSource: FusedLocationSource
@@ -61,7 +66,11 @@ class MainActivity : ComponentActivity() {
             RunnerdleTheme {
                 val navController = rememberNavController()
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AppNavigator(navController = navController, Modifier.padding(innerPadding), hasLocationPermission)
+                    AppNavigator(
+                        navController = navController,
+                        modifier = Modifier.padding(innerPadding),
+                        hasLocationPermission = hasLocationPermission
+                    )
                 }
             }
         }
@@ -101,6 +110,14 @@ fun AppNavigator(
                 RouteDisplayScreen(startPoint!!, endPoint!!)
             } else {
                 Text("Please select a route first.")
+            }
+        }
+        // 내 위치에 마커를 표시하는 LocationMarkerScreen을 추가
+        composable("locationMarker") {
+            if (hasLocationPermission) {
+                LocationMarkerScreenWithGeo()
+            } else {
+                Text("위치 권한이 필요합니다.")
             }
         }
     }

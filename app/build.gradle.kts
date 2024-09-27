@@ -34,8 +34,6 @@ android {
         // AndroidManifest.xml에 전달
         manifestPlaceholders["NAVER_CLIENT_ID"] = naverClientId
         manifestPlaceholders["NAVER_CLIENT_SECRET"] = naverClientSecret
-
-
     }
 
     buildTypes {
