@@ -1,17 +1,37 @@
-package com.yourapp.ui.routes
+package com.example.runner_dle.routes
 
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.location.Location
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,31 +40,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.MapView
+import com.naver.maps.map.overlay.Marker
+import com.naver.maps.map.overlay.PathOverlay
 import com.naver.maps.map.util.FusedLocationSource
 import com.yourapp.repository.GeocodingRepository
 import kotlinx.coroutines.launch
-import java.net.URLEncoder
-import java.util.Properties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RunningRoutesScreen(navController: NavController) {
     val context = LocalContext.current
     val activity = context as ComponentActivity
-    val locationSource = remember { FusedLocationSource(activity, LOCATION_PERMISSION_REQUEST_CODE) }
+    val locationSource =
+        remember { FusedLocationSource(activity, LOCATION_PERMISSION_REQUEST_CODE) }
 
-    var startPoint by remember { mutableStateOf("") }
-    var endPoint by remember { mutableStateOf("") }
+    // 출발지와 도착지 하드코딩 (테스트용)
+    val startPoint = "서울특별시 종로구 사직로9길 18-1"
+    val endPoint = "인천광역시 서구 검단로 836"
     var distanceKm by remember { mutableStateOf("") }
     var hasLocationPermission by remember { mutableStateOf(false) }
     var roadAddress by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
     val geocodingRepository = GeocodingRepository()
+
+    // 출발지와 도착지 좌표 상태 저장
+    var startLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+    var endLatLng by remember { mutableStateOf(LatLng(0.0, 0.0)) }
 
     // Snackbar 상태 저장
     val snackbarHostState = remember { SnackbarHostState() }
@@ -60,13 +84,6 @@ fun RunningRoutesScreen(navController: NavController) {
 
     // 추가: API 키 값을 로그로 확인
     Log.d("API_KEYS", "Client ID: $naverClientId, Secret: $naverClientSecret")
-
-    // API 키가 제대로 설정되었는지 확인
-    if (naverClientId.isNullOrEmpty() || naverClientSecret.isNullOrEmpty()) {
-        Log.e("API_KEYS_ERROR", "API Key or Secret is missing. Please check your configuration.")
-    } else {
-        Log.d("API_KEYS_SUCCESS", "API Keys are properly set.")
-    }
 
     // 권한 요청 런처
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -102,41 +119,76 @@ fun RunningRoutesScreen(navController: NavController) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Top
         ) {
+            Button(
+                onClick = {
+                    coroutineScope.launch {
+                        try {
+                            // Geocoding API 호출
+                            val startPointResponse = naverClientId?.let {
+                                geocodingRepository.getGeocodedLocation(
+                                    startPoint,
+                                    it,
+                                    naverClientSecret!!
+                                )
+                            }
+                            val endPointResponse = naverClientId?.let {
+                                geocodingRepository.getGeocodedLocation(
+                                    endPoint,
+                                    it,
+                                    naverClientSecret!!
+                                )
+                            }
+
+                            // Geocoding API 응답 확인 로그
+                            Log.d("Geocode", "StartPointResponse: $startPointResponse")
+                            Log.d("Geocode", "EndPointResponse: $endPointResponse")
+
+                            // 응답이 null이 아닌지 확인
+                            if (startPointResponse != null && endPointResponse != null) {
+                                // 출발지와 도착지 좌표 설정
+                                startLatLng = LatLng(
+                                    startPointResponse.addresses?.firstOrNull()?.latitude?.toDouble() ?: 0.0,
+                                    startPointResponse.addresses?.firstOrNull()?.longitude?.toDouble() ?: 0.0
+                                )
+                                endLatLng = LatLng(
+                                    endPointResponse.addresses?.firstOrNull()?.latitude?.toDouble() ?: 0.0,
+                                    endPointResponse.addresses?.firstOrNull()?.longitude?.toDouble() ?: 0.0
+                                )
+
+                                // 반환된 좌표값을 로그로 출력
+                                Log.d(
+                                    "LatLng",
+                                    "Start LatLng: ${startLatLng.latitude}, ${startLatLng.longitude}"
+                                )
+                                Log.d(
+                                    "LatLng",
+                                    "End LatLng: ${endLatLng.latitude}, ${endLatLng.longitude}"
+                                )
+                            } else {
+                                Log.e("Geocode", "Failed to fetch geocoding data.")
+                            }
+
+                            // Snackbar로 결과 표시
+                            snackbarHostState.showSnackbar("Start: ${startPointResponse?.addresses?.firstOrNull()?.roadAddress}, End: ${endPointResponse?.addresses?.firstOrNull()?.roadAddress}")
+
+                        } catch (e: Exception) {
+                            Log.e("API_ERROR", "Error during Geocoding API call: ${e.message}", e)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text("Show Recommended Route")
+            }
+
             if (hasLocationPermission) {
-                // 지도 보여주기
-                NaverMapContainer(
-                    locationSource = locationSource,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp) // 지도의 크기를 적절히 설정
-                )
+                // 지도 보여주기 및 경로 표시
+                NaverMapWithRoute(startLatLng = startLatLng, endLatLng = endLatLng)
             } else {
                 Text("Location permission is required to show the map.")
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 출발지 입력 필드
-            OutlinedTextField(
-                value = startPoint,
-                onValueChange = { startPoint = it },
-                label = { Text("Enter Starting Point") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 도착지 입력 필드
-            OutlinedTextField(
-                value = endPoint,
-                onValueChange = { endPoint = it },
-                label = { Text("Enter Destination") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -153,47 +205,11 @@ fun RunningRoutesScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        try {
-                            Log.d("INPUT_VALUES", "Start Point: $startPoint, End Point: $endPoint")
-
-                            val encodedStartPoint = URLEncoder.encode(startPoint, "UTF-8")
-                            val encodedEndPoint = URLEncoder.encode(endPoint, "UTF-8")
-
-                            Log.d("ENCODED_VALUES", "Encoded Start Point: $encodedStartPoint, Encoded End Point: $encodedEndPoint")
-
-                            // Geocoding API 호출
-                            val startPointResponse = naverClientId?.let {
-                                geocodingRepository.getGeocodedLocation(encodedStartPoint, it, naverClientSecret!!)
-                            }
-                            val endPointResponse = naverClientId?.let {
-                                geocodingRepository.getGeocodedLocation(encodedEndPoint, it, naverClientSecret!!)
-                            }
-
-                            val startAddress = startPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "Start address not found"
-                            val endAddress = endPointResponse?.addresses?.firstOrNull()?.roadAddress ?: "End address not found"
-
-                            roadAddress = "Start: $startAddress, End: $endAddress"
-
-                            // Snackbar로 결과 표시
-                            snackbarHostState.showSnackbar("Start: $startAddress, End: $endAddress")
-
-                        } catch (e: Exception) {
-                            Log.e("API_ERROR", "Error during Geocoding API call: ${e.message}", e)
-                        }
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Text("Show Recommended Route")
-            }
-
             if (roadAddress.isNotEmpty()) {
-                Text(text = "Found Address: $roadAddress", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = "Found Address: $roadAddress",
+                    style = MaterialTheme.typography.bodyLarge
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -206,49 +222,54 @@ fun RunningRoutesScreen(navController: NavController) {
         }
     }
 }
-
-
-
-
 @Composable
-fun NaverMapContainer(locationSource: FusedLocationSource, modifier: Modifier = Modifier) {
+fun NaverMapWithRoute(startLatLng: LatLng, endLatLng: LatLng) {
     val context = LocalContext.current
-    val fusedLocationClient: FusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context)
+    AndroidView(factory = { ctx: Context ->
+        val mapView = MapView(ctx)
+        mapView.getMapAsync { naverMap ->
 
-    AndroidView(
-        factory = { ctx: Context ->
-            val mapView = MapView(ctx)
-            mapView.getMapAsync { naverMap ->
-                naverMap.locationSource = locationSource
-
-                // 위치 오버레이 활성화
-                val locationOverlay = naverMap.locationOverlay
-                locationOverlay.isVisible = true
-
-                // 위치 추적 모드 설정 (Follow로 설정하여 내 위치를 따라감)
-                naverMap.locationTrackingMode = com.naver.maps.map.LocationTrackingMode.Follow
-
-                // 위치 정보 업데이트 (권한이 있는지 확인 후 수행)
-                if (ActivityCompat.checkSelfPermission(
-                        context, Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
-                ) {
-                    fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
-                        location?.let {
-                            val currentPosition = LatLng(it.latitude, it.longitude)
-                            locationOverlay.position = currentPosition
-
-                            // 카메라를 현재 위치로 이동
-                            val cameraUpdate = CameraUpdate.scrollTo(currentPosition)
-                            naverMap.moveCamera(cameraUpdate)
-                        }
-                    }
+            // 경로 그리기
+            if (startLatLng.latitude != 0.0 && endLatLng.latitude != 0.0) {
+                val path = PathOverlay().apply {
+                    coords = listOf(startLatLng, endLatLng)
                 }
+                path.map = naverMap
+
+                // 마커 설정
+                val startMarker = Marker().apply {
+                    position = startLatLng
+                    captionText = "출발지"
+                    map = naverMap // 마커를 지도에 추가
+                }
+                val endMarker = Marker().apply {
+                    position = endLatLng
+                    captionText = "도착지"
+                    map = naverMap // 마커를 지도에 추가
+                }
+
+                // 마커가 추가됐는지 로그 확인
+                Log.d("Marker", "Start marker at: ${startLatLng.latitude}, ${startLatLng.longitude}")
+                Log.d("Marker", "End marker at: ${endLatLng.latitude}, ${endLatLng.longitude}")
+
+                // 카메라 위치를 경로에 맞춰 이동
+                val bounds = com.naver.maps.geometry.LatLngBounds.Builder()
+                    .include(startLatLng)
+                    .include(endLatLng)
+                    .build()
+
+                // 카메라 이동 로그
+                Log.d("CameraUpdate", "Moving camera to fit bounds")
+
+                // 경로가 모두 화면에 보이도록 카메라 이동
+                naverMap.moveCamera(CameraUpdate.fitBounds(bounds, 100))
+            } else {
+                Log.e("Marker", "Start or End LatLng is invalid.")
             }
-            mapView
-        },
-        modifier = modifier // 전달된 Modifier로 크기 제어
-    )
+        }
+        mapView
+    }, modifier = Modifier.fillMaxSize())
 }
+
 
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000

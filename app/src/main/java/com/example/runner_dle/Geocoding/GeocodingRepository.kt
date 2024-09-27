@@ -1,7 +1,7 @@
 package com.yourapp.repository
 
 import com.yourapp.network.GeocodingApi
-import com.yourapp.network.GeocodeResponse
+import com.example.runner_dle.Geocoding.GeocodeResponse
 
 class GeocodingRepository {
 

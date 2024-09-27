@@ -1,4 +1,4 @@
-package com.yourapp.network
+package com.example.runner_dle.Geocoding
 
 // Geocoding API 응답 데이터 클래스
 data class GeocodeResponse(
@@ -16,6 +16,12 @@ data class Meta(
 data class Address(
     val roadAddress: String?,
     val jibunAddress: String?,
-    val x: String?, // 경도
-    val y: String?  // 위도
-)
+    val x: String?, // 경도 (longitude)
+    val y: String?  // 위도 (latitude)
+) {
+    val latitude: Double?
+        get() = y?.toDoubleOrNull()
+
+    val longitude: Double?
+        get() = x?.toDoubleOrNull()
+}

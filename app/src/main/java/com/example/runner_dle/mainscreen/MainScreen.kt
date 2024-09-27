@@ -41,6 +41,9 @@ fun MainScreen(navController: NavController) {
             }) {
                 Text("Check Running Routes")
             }
+            Button(onClick = { navController.navigate("locationMarker") }) {
+                Text("내 위치에 마커 표시하기")
+            }
         }
     }
 }

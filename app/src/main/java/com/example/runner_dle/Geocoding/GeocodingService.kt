@@ -1,5 +1,6 @@
 package com.yourapp.network
 
+import com.example.runner_dle.Geocoding.GeocodeResponse
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
